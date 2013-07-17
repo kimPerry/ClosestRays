@@ -15,6 +15,8 @@
 
 using namespace std;
 
+#define PI 3.14159265
+
 struct muonTrack
 {
 	double time;
@@ -48,9 +50,8 @@ struct pocas
 	vector<double> scatteringAngle;
 };
 
-int fileReadIn(ifstream & fin, vector<muonTrack>& muonTracks);
+void fileReadIn(ifstream & fin, vector<muonTrack>& muonTracks);
 void checkForWhiteSpace(vector<double>lowX, vector<double>lowY, vector<double>lowZ, vector<double>& highX, vector<double>& highY, vector<double>& highZ, vector<double>& scat);
-void initializeLookups(int * lowScatlookupX, int * lowScatlookupY, int * lowScatlookupZ);
 
 int main() {
 
@@ -61,11 +62,11 @@ int main() {
 	vector<double> lowScatlookupX;
 	vector<double> lowScatlookupY;
 	vector<double> lowScatlookupZ;
+	double angleIn, angleOut, oppIn, oppOut;
+	double distanceBetweenTubes, hDistanceBetweenTubes;
 
 	ifstream fin;
 	ofstream fout;
-
-	//initializeLookups(lowScatlookupX, lowScatlookupY, lowScatlookupZ, lookupLength);
 
 	// array of muon track data
 	vector<muonTrack> muonTracks;
@@ -80,10 +81,11 @@ int main() {
 	fileReadIn(fin, muonTracks);
 	fin.close();
 
-        int lineCount = muonTracks.size();
-        cout << lineCount << " tracks" << endl;
-		cout << muonTracks[lineCount-1].pocaX << endl;
-		cout << muonTracks[lineCount-2].pocaX << endl;
+	int lineCount = muonTracks.size();
+	cout << lineCount << " tracks" << endl;
+
+	distanceBetweenTubes = muonTracks[0].inPointZ - muonTracks[0].outPointZ;
+	cout << "Distance between tracks: " << distanceBetweenTubes << endl;
 
 	// graph stuff
 	for(int i = 0; i < lineCount; i++)
@@ -92,13 +94,32 @@ int main() {
 		if(muonTracks[i].pocaX > 0 && muonTracks[i].pocaY > 0 && muonTracks[i].pocaZ > 0)
 		{
 			// if track has scattering angle over a certain threshold
-			if(muonTracks[i].scatAngleTotal > .35)
+			if(muonTracks[i].scatAngleTotal > .3)
 			{
-				highScatterPocas->pocaX.push_back(muonTracks[i].pocaX);
-				highScatterPocas->pocaY.push_back(muonTracks[i].pocaY);
-				highScatterPocas->pocaZ.push_back(muonTracks[i].pocaZ);
-				highScatterPocas->scatteringAngle.push_back(muonTracks[i].scatAngleTotal);
-				highScatterCountBefore++;
+				angleIn = atan2(muonTracks[i].inDirY, muonTracks[i].inDirX) * 180 / PI;
+				angleOut = atan2(muonTracks[i].outDirY, muonTracks[i].outDirX) * 180 / PI;
+
+				hDistanceBetweenTubes = distanceBetweenTubes/sin(angleIn);
+
+				for(int hyp = 0; hyp < hDistanceBetweenTubes; hyp++)
+				{
+					oppIn = sin(angleIn) * hyp;
+					oppOut = distanceBetweenTubes - sin(angleOut) * hyp;
+					if(oppIn > (oppOut - oppOut *.1) && oppIn < (oppOut + oppOut * .10))
+					{
+						//if(hyp > (oppOut - oppOut *.1) && oppIn < (oppOut + oppOut * .10))
+						//{
+
+												highScatterPocas->pocaX.push_back(muonTracks[i].pocaX);
+												highScatterPocas->pocaY.push_back(muonTracks[i].pocaY);
+												highScatterPocas->pocaZ.push_back(muonTracks[i].pocaZ);
+												highScatterPocas->scatteringAngle.push_back(muonTracks[i].scatAngleTotal);
+												highScatterCountBefore++;
+												cout << "j: " << hyp << " oppIn: " << oppIn << " oppOut: " << oppOut << endl;
+												break;
+						//}
+					}
+				}
 			}
 
 			// else add to low scatter list
@@ -118,10 +139,10 @@ int main() {
 
     cout << "high scattering points before checking: " << highScatterCountBefore << endl;
     cout << "low scattering points: " << unScatPointsPlotted << endl;
-	cout << "Looking for white space..." << endl;
+	//cout << "Looking for white space..." << endl;
 
-	checkForWhiteSpace(lowScatlookupX, lowScatlookupY, lowScatlookupZ, highScatterPocas->pocaX, highScatterPocas->pocaY,
-			           highScatterPocas->pocaZ, highScatterPocas->scatteringAngle);
+	//checkForWhiteSpace(lowScatlookupX, lowScatlookupY, lowScatlookupZ, highScatterPocas->pocaX, highScatterPocas->pocaY,
+	//		           highScatterPocas->pocaZ, highScatterPocas->scatteringAngle);
 
 
 	// read out to file
@@ -208,7 +229,7 @@ cout << "finished function" << endl;
 */
 }
 
-int fileReadIn(ifstream & fin, vector<muonTrack> & muonTracks)
+void fileReadIn(ifstream & fin, vector<muonTrack> & muonTracks)
 {
 	string temp;
 
@@ -216,17 +237,20 @@ int fileReadIn(ifstream & fin, vector<muonTrack> & muonTracks)
 
 	int index = 0;
 
-	muonTracks.push_back(muonTrack());
-	getline(fin, temp, ',' );
-	muonTracks[index].time = atof(temp.c_str());
-
-
-	while (fin.good())
+	while(fin.good())
 	{
-		//muonTracks.push_back(muonTrack());
-		//getline(fin, dummy, ',' );
-		//muonTracks[index].time = atof(dummy.c_str());
-        index++;
+		// initial read
+		getline(fin, temp, ',' );
+
+		// if this is the end of the file quit loop
+		if(fin.eof())
+			break;
+
+		// else continue reading
+		// push on a muon track object and assign all file parameters to it
+		muonTracks.push_back(muonTrack());
+		muonTracks[index].time = atof(temp.c_str());
+
 		getline(fin, temp, ',' );
 		muonTracks[index].inDirX = atof(temp.c_str());
 		getline(fin, temp, ',' );
@@ -275,20 +299,6 @@ int fileReadIn(ifstream & fin, vector<muonTrack> & muonTracks)
 		getline(fin, temp, ',' );
 		muonTracks[index].pocaZ = atof(temp.c_str());
 
-		muonTracks.push_back(muonTrack());
-		getline(fin, temp, ',' );
-		muonTracks[index].time = atof(temp.c_str());
-
-	}
-	return index;
-}
-
-void initializeLookups(int * lowScatlookupX, int * lowScatlookupY, int * lowScatlookupZ, int length)
-{
-	for(int i = 0; i < length; i++)
-	{
-		lowScatlookupX[i] = 0;
-		lowScatlookupY[i] = 0;
-		lowScatlookupZ[i] = 0;
+		index++;
 	}
 }

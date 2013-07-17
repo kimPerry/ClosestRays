@@ -20,4 +20,4 @@ set bmargin  2
 set rmargin  5
 set cbrange [0:100]
 splot 'data.dat' using 1:2:3:4 with points pointsize 1 pt 7 palette	title "Test Graph"
-pause -1
+
