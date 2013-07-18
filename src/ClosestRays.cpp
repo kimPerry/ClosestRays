@@ -62,7 +62,8 @@ int main() {
 	vector<double> lowScatlookupX;
 	vector<double> lowScatlookupY;
 	vector<double> lowScatlookupZ;
-	double angleIn, angleOut, oppIn, oppOut;
+	double angleIn, angleOut, oppIn, oppOut, adjIn, adjOut;
+	double newXIn, newXOut, newYIn, newYOut;
 	double distanceBetweenTubes, hDistanceBetweenTubes;
 
 	ifstream fin;
@@ -85,7 +86,7 @@ int main() {
 	cout << lineCount << " tracks" << endl;
 
 	distanceBetweenTubes = muonTracks[0].inPointZ - muonTracks[0].outPointZ;
-	cout << "Distance between tracks: " << distanceBetweenTubes << endl;
+	cout << "Distance between tubes: " << distanceBetweenTubes << endl;
 
 	// graph stuff
 	for(int i = 0; i < lineCount; i++)
@@ -94,30 +95,39 @@ int main() {
 		if(muonTracks[i].pocaX > 0 && muonTracks[i].pocaY > 0 && muonTracks[i].pocaZ > 0)
 		{
 			// if track has scattering angle over a certain threshold
-			if(muonTracks[i].scatAngleTotal > .3)
+			if(muonTracks[i].scatAngleTotal > .2)
 			{
 				angleIn = atan2(muonTracks[i].inDirY, muonTracks[i].inDirX) * 180 / PI;
 				angleOut = atan2(muonTracks[i].outDirY, muonTracks[i].outDirX) * 180 / PI;
 
 				hDistanceBetweenTubes = distanceBetweenTubes/sin(angleIn);
-
-				for(int hyp = 0; hyp < hDistanceBetweenTubes; hyp++)
+				//cout << "h: " <<hDistanceBetweenTubes << endl;
+				for(int hyp = 1; hyp < 1000; hyp++)
 				{
 					oppIn = sin(angleIn) * hyp;
 					oppOut = distanceBetweenTubes - sin(angleOut) * hyp;
-					if(oppIn > (oppOut - oppOut *.1) && oppIn < (oppOut + oppOut * .10))
+					if(oppIn > (oppOut - oppOut *.1) && oppIn < (oppOut + oppOut * .1))
 					{
-						//if(hyp > (oppOut - oppOut *.1) && oppIn < (oppOut + oppOut * .10))
-						//{
+						newXIn = muonTracks[i].inPointX + cos(angleIn) * hyp;
+						newXOut = muonTracks[i].outPointX + cos(angleOut) * hyp;
+						newYIn = muonTracks[i].inPointY + sin(angleIn) * hyp;
+						newYOut = muonTracks[i].outPointY + sin(angleOut) * hyp;
 
-												highScatterPocas->pocaX.push_back(muonTracks[i].pocaX);
-												highScatterPocas->pocaY.push_back(muonTracks[i].pocaY);
-												highScatterPocas->pocaZ.push_back(muonTracks[i].pocaZ);
-												highScatterPocas->scatteringAngle.push_back(muonTracks[i].scatAngleTotal);
-												highScatterCountBefore++;
-												cout << "j: " << hyp << " oppIn: " << oppIn << " oppOut: " << oppOut << endl;
-												break;
-						//}
+						if(newXIn > (newXOut - newXOut *.1) && newXIn < (newXOut + newXOut * .1))
+						{
+							if(newYIn > (newYOut - newYOut *.1) && newYIn < (newYOut + newYOut * .1) )
+							{
+								//cout << "inx: " << muonTracks[i].inPointX << " newinx: " << newXIn << endl;
+								//						cout << "outx: " << muonTracks[i].outPointX << " newoutx: " << newXOut << endl;
+								highScatterPocas->pocaX.push_back(muonTracks[i].pocaX);
+								highScatterPocas->pocaY.push_back(muonTracks[i].pocaY);
+								highScatterPocas->pocaZ.push_back(muonTracks[i].pocaZ);
+								highScatterPocas->scatteringAngle.push_back(muonTracks[i].scatAngleTotal);
+								highScatterCountBefore++;
+								//cout << "j: " << hyp << " oppIn: " << oppIn << " oppOut: " << oppOut << endl;
+								break;
+							}
+						}
 					}
 				}
 			}
